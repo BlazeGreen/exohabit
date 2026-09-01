@@ -24,7 +24,8 @@ export default function HomePage() {
     .sort((a, b) => (b.disc_year ?? 0) - (a.disc_year ?? 0))
     .slice(0, 6);
 
-  const highCount = index.filter((p) => p.score >= 75).length;
+  const highMin = meta.bands.score.find((b) => b.label.includes("HIGH"))?.min ?? 80;
+  const highCount = index.filter((p) => p.score >= highMin).length;
 
   return (
     <div className="mx-auto max-w-7xl px-5 pb-24 pt-16">

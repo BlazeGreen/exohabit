@@ -6,7 +6,8 @@ import { BandBadge, ConfidencePill } from "@/components/BandBadge";
 import FieldRow from "@/components/FieldRow";
 import ContributionWaterfall from "@/components/ContributionWaterfall";
 import HZDiagram from "@/components/HZDiagram";
-import SystemView2D, { type SystemPlanet } from "@/components/SystemView2D";
+import SystemView from "@/components/SystemView";
+import type { SystemPlanet } from "@/components/SystemView2D";
 import Disclaimer from "@/components/Disclaimer";
 import { fmt, fmtLy } from "@/lib/format";
 
@@ -163,8 +164,9 @@ export default async function PlanetPage({ params }: { params: Promise<{ id: str
       {/* System */}
       {systemPlanets.length > 0 && (
         <Section title={`Planetary System — ${planet.hostname}`} className="mt-8">
-          <SystemView2D
+          <SystemView
             planets={systemPlanets}
+            starName={planet.hostname ?? "Host star"}
             starTeff={planet.star.teff_k}
             starRadiusSun={planet.star.radius_sun}
             hzConservativeAu={hzC}

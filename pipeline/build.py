@@ -125,7 +125,9 @@ def main(force_demo: bool = False) -> None:
             json.dump(p, f, separators=(",", ":"))
     print(f"  [build] wrote data/planets/*.json  ({len(planets)} files)")
 
-    hi = sum(1 for p in index if p["score"] >= 75)
+    _high_min = next((b["min"] for b in scoring.CONFIG["bands"]["score"]
+                      if "HIGH" in b["label"]), 80)
+    hi = sum(1 for p in index if p["score"] >= _high_min)
     print(f"\n  [build] {len(planets)} planets  |  {skipped} skipped  |  "
           f"{hi} high-potential  |  mode={raw['mode']}  |  {meta['build_seconds']}s")
     print(f"  [build] top 5: " + ", ".join(

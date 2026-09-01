@@ -29,12 +29,14 @@ const R_MAX = SIZE / 2 - 40;
 
 export default function SystemView2D({
   planets,
+  starName,
   starTeff,
   starRadiusSun,
   hzConservativeAu,
   hzOptimisticAu,
 }: {
   planets: SystemPlanet[];
+  starName?: string;
   starTeff: number | null;
   starRadiusSun: number | null;
   hzConservativeAu: [number, number] | null;
@@ -88,6 +90,18 @@ export default function SystemView2D({
         {/* star */}
         <circle cx={CX} cy={CY} r={starR * 3} fill="url(#starGlow)" />
         <circle cx={CX} cy={CY} r={starR} fill={color} />
+        {starName && (
+          <text
+            x={CX}
+            y={CY + starR + 16}
+            textAnchor="middle"
+            fontSize="12"
+            fontWeight={600}
+            fill="var(--text)"
+          >
+            ★ {starName}
+          </text>
+        )}
 
         {/* planets */}
         {withOrbit.map((p, i) => {
