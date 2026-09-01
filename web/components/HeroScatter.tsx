@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { IndexRow } from "@/lib/types";
+import { asset } from "@/lib/asset";
 import { bandColor, bandKey } from "@/lib/format";
 
 const W = 960;
@@ -27,7 +28,7 @@ export default function HeroScatter() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/data/index.json").then((r) => r.json()).then(setRows).catch(() => setRows([]));
+    fetch(asset("/data/index.json")).then((r) => r.json()).then(setRows).catch(() => setRows([]));
   }, []);
 
   const sample = useMemo(() => {

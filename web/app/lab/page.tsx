@@ -1,8 +1,7 @@
 import { Suspense } from "react";
 import WorldLab from "@/components/WorldLab";
 
-export default async function LabPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const sp = await searchParams;
+export default function LabPage() {
   return (
     <div className="mx-auto max-w-6xl px-5 pb-24 pt-12">
       <p className="label-eyebrow mb-2">World Lab</p>
@@ -14,7 +13,7 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
       </p>
       <div className="mt-8">
         <Suspense>
-          <WorldLab presetPlanetId={sp.preset} />
+          <WorldLab />
         </Suspense>
       </div>
     </div>

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { IndexRow } from "@/lib/types";
+import { asset } from "@/lib/asset";
 import { BandBadge } from "./BandBadge";
 
 export default function SearchBox({ placeholder = "Search known worlds… e.g. TRAPPIST-1 e" }: { placeholder?: string }) {
@@ -12,7 +13,7 @@ export default function SearchBox({ placeholder = "Search known worlds… e.g. T
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/data/index.json")
+    fetch(asset("/data/index.json"))
       .then((r) => r.json())
       .then(setRows)
       .catch(() => setRows([]));

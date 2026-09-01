@@ -1,8 +1,7 @@
 import { Suspense } from "react";
 import ComparePanel from "@/components/ComparePanel";
 
-export default async function ComparePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const sp = await searchParams;
+export default function ComparePage() {
   return (
     <div className="mx-auto max-w-5xl px-5 pb-24 pt-12">
       <p className="label-eyebrow mb-2">Compare</p>
@@ -13,7 +12,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
       </p>
       <div className="mt-8">
         <Suspense>
-          <ComparePanel initialIds={[sp.a ?? null, sp.b ?? null, sp.c ?? null]} />
+          <ComparePanel />
         </Suspense>
       </div>
     </div>

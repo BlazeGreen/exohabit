@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { assessScenario, PRESETS, type Scenario } from "@/lib/model";
+import { asset } from "@/lib/asset";
 import { DIMENSION_LABEL, bandColor, bandKey } from "@/lib/format";
 import { BandBadge } from "./BandBadge";
 import CountUp from "./CountUp";
@@ -15,7 +17,8 @@ function albedoLabel(a: number) {
   return "Icy / reflective";
 }
 
-export default function WorldLab({ presetPlanetId }: { presetPlanetId?: string }) {
+export default function WorldLab() {
+  const presetPlanetId = useSearchParams().get("preset") ?? undefined;
   const [s, setS] = useState<Scenario>(DEFAULT);
   const [presetLabel, setPresetLabel] = useState("Earth");
 
@@ -27,7 +30,7 @@ export default function WorldLab({ presetPlanetId }: { presetPlanetId?: string }
       setPresetLabel(known[1].label);
       return;
     }
-    fetch(`/data/planets/${presetPlanetId}.json`)
+    fetch(asset(`/data/planets/${presetPlanetId}.json`))
       .then((r) => (r.ok ? r.json() : null))
       .then((p: Planet | null) => {
         if (!p) return;

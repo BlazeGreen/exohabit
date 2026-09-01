@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { IndexRow, Planet } from "@/lib/types";
+import { asset } from "@/lib/asset";
 import { fmt } from "@/lib/format";
 import { BandBadge } from "./BandBadge";
 
@@ -17,20 +19,22 @@ const METRICS: { key: string; label: string; unit: string; digits: number; get: 
   { key: "score", label: "Habitability potential", unit: "/100", digits: 1, get: (p) => p.assessment.score },
 ];
 
-export default function ComparePanel({ initialIds }: { initialIds: (string | null)[] }) {
+export default function ComparePanel() {
+  const params = useSearchParams();
+  const initialIds = [params.get("a"), params.get("b"), params.get("c")];
   const [index, setIndex] = useState<IndexRow[] | null>(null);
   const [slots, setSlots] = useState<(string | null)[]>([initialIds[0] ?? null, initialIds[1] ?? null, initialIds[2] ?? null]);
   const [planets, setPlanets] = useState<Record<string, Planet>>({});
   const [queries, setQueries] = useState(["", "", ""]);
 
   useEffect(() => {
-    fetch("/data/index.json").then((r) => r.json()).then(setIndex).catch(() => setIndex([]));
+    fetch(asset("/data/index.json")).then((r) => r.json()).then(setIndex).catch(() => setIndex([]));
   }, []);
 
   useEffect(() => {
     slots.forEach((id) => {
       if (id && !planets[id]) {
-        fetch(`/data/planets/${id}.json`)
+        fetch(asset(`/data/planets/${id}.json`))
           .then((r) => r.json())
           .then((p: Planet) => setPlanets((prev) => ({ ...prev, [id]: p })));
       }

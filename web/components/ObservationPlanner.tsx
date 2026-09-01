@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { IndexRow } from "@/lib/types";
+import { asset } from "@/lib/asset";
 import { fmt } from "@/lib/format";
 import { BandBadge } from "./BandBadge";
 
@@ -30,7 +31,7 @@ export default function ObservationPlanner({ hpThreshold }: { hpThreshold: numbe
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/data/index.json").then((r) => r.json()).then(setRows).catch(() => setRows([]));
+    fetch(asset("/data/index.json")).then((r) => r.json()).then(setRows).catch(() => setRows([]));
   }, []);
 
   const pts = useMemo(() => {

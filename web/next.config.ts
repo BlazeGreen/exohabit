@@ -1,12 +1,14 @@
 import type { NextConfig } from "next";
 
+// GitHub Pages serves the site from https://<user>.github.io/<repo>/, so the
+// build needs a basePath. Locally NEXT_PUBLIC_BASE_PATH is unset -> "" -> root.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 const nextConfig: NextConfig = {
-  // Planet detail pages beyond the top-300 statically generated at build time
-  // render on demand and read their JSON via fs (lib/data.ts). Trace the data
-  // files into that route's function bundle only — not every route.
-  outputFileTracingIncludes: {
-    "/planets/[id]": ["./public/data/planets/**", "./public/data/index.json"],
-  },
+  output: "export",
+  basePath: basePath || undefined,
+  trailingSlash: true,
+  images: { unoptimized: true },
 };
 
 export default nextConfig;

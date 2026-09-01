@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { IndexRow } from "@/lib/types";
+import { asset } from "@/lib/asset";
 import { PC_TO_LY } from "@/lib/format";
 import PlanetCard from "./PlanetCard";
 
@@ -55,7 +56,7 @@ export default function RankingsExplorer() {
   const [visible, setVisible] = useState(60);
 
   useEffect(() => {
-    fetch("/data/index.json").then((r) => r.json()).then(setRows).catch(() => setRows([]));
+    fetch(asset("/data/index.json")).then((r) => r.json()).then(setRows).catch(() => setRows([]));
   }, []);
 
   const activeCount =

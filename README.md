@@ -84,15 +84,24 @@ python -m venv .venv
 
 The `cd web` / `npm` steps are identical on every platform.
 
-## Deploy (Vercel)
+## Deploy (GitHub Pages)
 
-1. Import the repo, set **Root Directory = `web`**.
-2. Framework preset: Next.js (auto-detected). No env vars required.
-3. The committed `data/index.json`, `data/meta.json` and `data/planets/*.json`
-   are all the frontend needs — Python does not run at deploy time.
+The app builds to a fully static export (`web/out/`), deployed by the workflow
+in `.github/workflows/deploy.yml` on every push to `main`.
 
-To refresh the catalogue with the latest NASA data: re-run `pipeline/build.py`
-and commit the changed files under `data/`.
+One-time setup: **Settings → Pages → Source → GitHub Actions**. The repo must be
+public (or on a plan that allows Pages for private repos).
+
+The site is served from `https://<user>.github.io/exohabit/`, so the workflow
+builds with `NEXT_PUBLIC_BASE_PATH=/exohabit`. If you rename the repo, update
+that value in the workflow.
+
+To deploy anywhere else (Vercel, Netlify, Cloudflare Pages, any static host):
+build `web/` with `npm run build` and serve `web/out/`. Set
+`NEXT_PUBLIC_BASE_PATH` only if the site lives under a sub-path.
+
+To refresh the catalogue with the latest NASA data: re-run `pipeline/build.py`,
+run `npm run sync-data` in `web/`, and commit the changed files.
 
 ## Scientific notes / known limitations
 
