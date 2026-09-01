@@ -23,6 +23,10 @@ export default function HomePage() {
     .filter((p) => p.disc_year != null && p.score >= 45)
     .sort((a, b) => (b.disc_year ?? 0) - (a.disc_year ?? 0))
     .slice(0, 6);
+  const observable = [...index]
+    .filter((p) => p.transiting && p.tsm_tier === "strong" && p.score >= 45)
+    .sort((a, b) => (b.tsm ?? 0) - (a.tsm ?? 0))
+    .slice(0, 6);
 
   const highMin = meta.bands.score.find((b) => b.label.includes("HIGH"))?.min ?? 80;
   const highCount = index.filter((p) => p.score >= highMin).length;
@@ -72,6 +76,7 @@ export default function HomePage() {
       </section>
 
       <Row title="Promising candidates" href="/rankings?sort=score" rows={promising} />
+      <Row title="Best transmission-spectroscopy targets" href="/planner" rows={observable} />
       <Row title="Most Earth-like (by ESI)" href="/rankings?sort=esi" rows={earthlike} />
       <Row title="Nearby worlds worth a look" href="/rankings?sort=distance" rows={nearby} />
       <Row title="Recently discovered" href="/rankings?sort=recent" rows={recent} />

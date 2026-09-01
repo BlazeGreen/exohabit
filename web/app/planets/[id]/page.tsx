@@ -10,6 +10,7 @@ import SystemView from "@/components/SystemView";
 import type { SystemPlanet } from "@/components/SystemView2D";
 import Disclaimer from "@/components/Disclaimer";
 import { fmt, fmtLy } from "@/lib/format";
+import type { Observability } from "@/lib/types";
 
 export const dynamicParams = true;
 
@@ -146,6 +147,10 @@ export default async function PlanetPage({ params }: { params: Promise<{ id: str
               <p className="text-sm text-text-faint">Insufficient data to compute ESI.</p>
             )}
           </Section>
+
+          <Section title="Observation Feasibility">
+            <ObservabilityPanel o={planet.observability} radius={planet.fields.radius_earth.value} />
+          </Section>
         </div>
       </div>
 
@@ -222,6 +227,95 @@ function Overview({
         )}
       </div>
       <div className="label-eyebrow mt-1">{label}</div>
+    </div>
+  );
+}
+
+const TIER_COLOR: Record<string, string> = {
+  strong: "var(--cyan)",
+  marginal: "var(--amber)",
+  weak: "var(--text-faint)",
+};
+
+function TierBadge({ tier }: { tier: "strong" | "marginal" | "weak" | null }) {
+  if (!tier) return null;
+  const c = TIER_COLOR[tier];
+  return (
+    <span
+      className="label-eyebrow rounded-full border px-2 py-0.5"
+      style={{ color: c, borderColor: `${c}40`, background: `${c}14` }}
+    >
+      {tier}
+    </span>
+  );
+}
+
+function ObservabilityPanel({ o, radius }: { o: Observability; radius: number | null }) {
+  if (!o.transiting || o.tsm == null) {
+    return (
+      <div className="text-sm text-text-dim">
+        <p className="mb-2">
+          {o.transiting
+            ? "This planet transits, but a transmission-spectroscopy metric could not be estimated."
+            : "This planet does not transit its star, so transmission and emission spectroscopy do not apply."}
+        </p>
+        {o.notes.map((n, i) => (
+          <p key={i} className="text-xs text-text-faint">
+            — {n}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+        <div>
+          <div className="flex items-baseline gap-2">
+            <span className="num text-3xl text-text">{fmt(o.tsm, o.tsm < 100 ? 1 : 0)}</span>
+            <TierBadge tier={o.tsm_tier} />
+          </div>
+          <div className="label-eyebrow mt-1">TSM · transmission</div>
+        </div>
+        {o.esm != null && (
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="num text-2xl text-text-dim">{fmt(o.esm, o.esm < 100 ? 1 : 0)}</span>
+              <TierBadge tier={o.esm_tier} />
+            </div>
+            <div className="label-eyebrow mt-1">ESM · emission</div>
+          </div>
+        )}
+      </div>
+
+      <p className="mt-3 text-xs text-text-faint">
+        Kempton et al. 2018 metrics for JWST atmospheric follow-up. &ldquo;Strong&rdquo; means above
+        the recommended threshold for a{" "}
+        {radius != null && radius < 1.5 ? "terrestrial" : "planet of this size"} target (TSM ≳{" "}
+        {o.tsm_threshold}). Only meaningful for transiting planets.
+      </p>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <MiniFact label="Transit depth" value={o.transit_depth_ppm != null ? `${fmt(o.transit_depth_ppm, 0)} ppm` : "—"} />
+        <MiniFact label="Transit dur." value={o.transit_duration_hr != null ? `${fmt(o.transit_duration_hr, 1)} h` : "—"} />
+        <MiniFact label="Host J-mag" value={o.st_jmag != null ? fmt(o.st_jmag, 1) : "—"} />
+        <MiniFact label="Host K-mag" value={o.st_kmag != null ? fmt(o.st_kmag, 1) : "—"} />
+      </div>
+
+      <p className="mt-3 text-xs text-text-faint">
+        TSM assumes a cloud-free, low-molecular-weight (H/He-dominated) atmosphere. An Earth-like
+        N₂/CO₂ atmosphere would give a signal roughly an order of magnitude smaller — treat TSM as a
+        ranking within a planet class, not a guarantee.
+      </p>
+    </div>
+  );
+}
+
+function MiniFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-white/[0.03] px-2 py-1.5 text-center">
+      <div className="num text-sm text-text">{value}</div>
+      <div className="label-eyebrow mt-0.5 !text-[0.56rem]">{label}</div>
     </div>
   );
 }

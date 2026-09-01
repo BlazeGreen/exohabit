@@ -156,7 +156,33 @@ export default function MethodologyPage() {
         </p>
       </Section>
 
-      <Section title="7 · Limitations">
+      <Section title="7 · Observation feasibility">
+        <p className="mb-3">
+          A high habitability-potential score is not useful on its own if the planet cannot be
+          studied. For every <strong className="text-text">transiting</strong> planet ExoHabit
+          computes the <strong className="text-text">Transmission Spectroscopy Metric (TSM)</strong>{" "}
+          and <strong className="text-text">Emission Spectroscopy Metric (ESM)</strong> of Kempton
+          et al. (2018) — the community-standard relative figures of merit for JWST atmospheric
+          characterisation.
+        </p>
+        <p className="mb-3">
+          TSM ∝ Rₚ³·T_eq / (Mₚ·R★²) · 10<sup>−m_J/5</sup> — it rewards a large, low-gravity planet
+          transiting a small, bright star. A planet is flagged{" "}
+          <span style={{ color: "var(--cyan)" }}>strong</span> when its TSM exceeds Kempton&rsquo;s
+          recommended threshold for its size class (≈12 for terrestrial planets, ≈90 above that).
+          The equilibrium temperature used here follows Kempton&rsquo;s definition (zero albedo,
+          full heat redistribution) and is distinct from the value used elsewhere on the site.
+        </p>
+        <p>
+          <strong className="text-text">Important:</strong> TSM assumes a cloud-free,
+          hydrogen-dominated atmosphere. A high-mean-molecular-weight atmosphere like Earth&rsquo;s
+          produces a signal roughly ten times smaller, so TSM ranks targets{" "}
+          <em>within a size class</em> — it is not an absolute prediction of success, and it does
+          not account for stellar activity or scheduling constraints.
+        </p>
+      </Section>
+
+      <Section title="8 · Limitations">
         <ul className="list-disc space-y-2 pl-5">
           <li>
             Atmospheric composition is unconstrained for nearly every confirmed exoplanet. Surface
@@ -208,6 +234,7 @@ export default function MethodologyPage() {
           <li>Kopparapu et al. 2013, ApJ 765, 131; 2014, ApJ 787, L29 &mdash; habitable-zone flux boundaries.</li>
           <li>Schulze-Makuch et al. 2011, Astrobiology 11, 1041 &mdash; Earth Similarity Index.</li>
           <li>Chen &amp; Kipping 2017, ApJ 834, 17 &mdash; probabilistic mass&ndash;radius relation.</li>
+          <li>Kempton et al. 2018, PASP 130, 114401 &mdash; TSM / ESM observation-feasibility metrics.</li>
         </ul>
       </Section>
     </div>

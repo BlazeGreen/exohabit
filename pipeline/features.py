@@ -157,6 +157,61 @@ def build_record(row: dict) -> Optional[dict]:
     hz = phys.hz_position(insol, st_teff)
     hz_bounds = phys.hz_distance_boundaries_au(st_teff, lum)
 
+    # --- observability (Kempton et al. 2018 TSM / ESM) ---
+    transiting = bool(row.get("tran_flag"))
+    j_mag = _f(row, "sy_jmag")
+    k_mag = _f(row, "sy_kmag")
+    trandep = _f(row, "pl_trandep")      # archive: transit depth in percent
+    trandur = _f(row, "pl_trandur")      # hours
+    kempton_teq = phys.kempton_eq_temp_k(st_teff, st_rad, a_au)
+
+    tsm = esm = None
+    if transiting:
+        tsm = phys.transmission_spectroscopy_metric(radius, mass, kempton_teq, st_rad, j_mag)
+        esm = phys.emission_spectroscopy_metric(radius, kempton_teq, st_teff, st_rad, k_mag)
+    tsm_thr = phys.tsm_threshold(radius)
+
+    def _tier(v: Optional[float], thr: float) -> Optional[str]:
+        if v is None:
+            return None
+        if v >= thr:
+            return "strong"
+        if v >= 0.5 * thr:
+            return "marginal"
+        return "weak"
+
+    tsm_prov = ("modelled" if prov["mass_earth"] == "modelled" else "derived") if tsm is not None else "unknown"
+    fields["tsm"] = _field(tsm, tsm_prov, "", note="Kempton et al. 2018 transmission-spectroscopy metric")
+    fields["esm"] = _field(esm, "derived" if esm is not None else "unknown", "",
+                           note="Kempton et al. 2018 emission-spectroscopy metric")
+    fields["transit_depth_ppm"] = _field(None if trandep is None else trandep * 1e4, "observed", "ppm")
+    fields["transit_duration_hr"] = _field(trandur, "observed", "h")
+    fields["st_jmag"] = _field(j_mag, "observed", "mag")
+    fields["st_kmag"] = _field(k_mag, "observed", "mag")
+
+    reasons = []
+    if not transiting:
+        reasons.append("planet does not transit — transmission/emission spectroscopy not applicable")
+    elif tsm is None:
+        miss = [n for n, v in (("mass", mass), ("J-band magnitude", j_mag),
+                               ("stellar radius", st_rad)) if v is None]
+        if miss:
+            reasons.append("missing " + ", ".join(miss) + " for a TSM estimate")
+    observability = {
+        "transiting": transiting,
+        "tsm": None if tsm is None else round(tsm, 2),
+        "esm": None if esm is None else round(esm, 2),
+        "tsm_threshold": tsm_thr,
+        "tsm_tier": _tier(tsm, tsm_thr),
+        "esm_tier": _tier(esm, 7.5),
+        "kempton_eq_temp_k": None if kempton_teq is None else round(kempton_teq, 1),
+        "transit_depth_ppm": None if trandep is None else round(trandep * 1e4, 1),
+        "transit_duration_hr": trandur,
+        "st_jmag": j_mag,
+        "st_kmag": k_mag,
+        "notes": reasons,
+    }
+
     # relative measurement errors for the confidence model
     rel_errors: dict[str, float] = {}
     for k, ekey in (("radius_earth", "pl_radeerr1"), ("semi_major_au", "pl_orbsmaxerr1"),
@@ -173,6 +228,7 @@ def build_record(row: dict) -> Optional[dict]:
         "st_teff": st_teff, "st_rad": st_rad, "st_lum": lum,
         "st_spectype": st_spectype, "st_age_gyr": st_age,
         "hz_position": hz, "hz_bounds_au": hz_bounds,
+        "tsm": tsm, "esm": esm, "transiting": transiting,
         "provenance": prov, "rel_errors": rel_errors,
     }
 
@@ -200,5 +256,6 @@ def build_record(row: dict) -> Optional[dict]:
         "fields": fields,
         "hz_bounds_au": hz_bounds,
         "hz_position": hz,
+        "observability": observability,
     }
     return {"planet": planet, "derived": derived}

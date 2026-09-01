@@ -93,6 +93,11 @@ def main(force_demo: bool = False) -> None:
         "in_conservative_hz": bool(p["hz_position"] and p["hz_position"]["in_conservative"]),
         "in_optimistic_hz": bool(p["hz_position"] and p["hz_position"]["in_optimistic"]),
         "mass_modelled": p["fields"]["mass_earth"]["provenance"] == "modelled",
+        "transiting": p["observability"]["transiting"],
+        "tsm": p["observability"]["tsm"],
+        "esm": p["observability"]["esm"],
+        "tsm_tier": p["observability"]["tsm_tier"],
+        "st_jmag": p["observability"]["st_jmag"],
     } for p in planets]
 
     meta = {

@@ -226,3 +226,96 @@ def earth_similarity_index(
         product *= components[name]
     return {"esi": max(0.0, min(1.0, product)), "components": components,
             "n_terms": n, "used_terms": [a[0] for a in avail]}
+
+
+# --- observability: Kempton et al. 2018 metrics ---------------------------
+# "A Framework for Prioritizing the TESS Planetary Candidates Most Amenable to
+# Atmospheric Characterization", Kempton et al. 2018, PASP 130, 114401.
+#
+# TSM and ESM are relative figures of merit for JWST atmospheric follow-up,
+# normalized so that they approximate the S/N of a fixed reference program.
+# They ONLY apply to transiting planets. TSM assumes a cloud-free, low
+# mean-molecular-weight (H/He-dominated) atmosphere and so OVERESTIMATES the
+# feasibility of high-mmw (e.g. Earth-like N2/CO2) atmospheres — it ranks
+# targets within a size class, it is not an absolute promise.
+
+RSUN_IN_RE = 109.076          # Earth radii per solar radius
+RSUN_IN_AU = 0.00465047       # AU per solar radius
+_HC_OVER_K_M_K = 0.0143877688  # h c / k_B  [m K]
+
+# TSM scale factors by planet-radius bin (Kempton 2018, Table 1)
+_TSM_SCALE = [
+    (1.50, 0.190),
+    (2.75, 1.26),
+    (4.00, 1.28),
+    (10.0, 1.15),
+]
+
+
+def _tsm_scale_factor(radius_earth: float) -> float:
+    for hi, s in _TSM_SCALE:
+        if radius_earth < hi:
+            return s
+    return 1.15
+
+
+def kempton_eq_temp_k(st_teff: Num, st_rad_sun: Num, semi_major_au: Num) -> Num:
+    """Equilibrium temperature as defined for TSM/ESM: zero albedo, full
+    day-night heat redistribution.  T_eq = T_star * sqrt(R_star / (2 a))."""
+    if not _ok(st_teff, st_rad_sun, semi_major_au):
+        return None
+    return st_teff * math.sqrt((st_rad_sun * RSUN_IN_AU) / (2.0 * semi_major_au))
+
+
+def transmission_spectroscopy_metric(
+    radius_earth: Num, mass_earth: Num, eq_temp_k: Num,
+    st_rad_sun: Num, j_mag: Num,
+) -> Num:
+    """TSM = scale * (Rp^3 * Teq) / (Mp * Rs^2) * 10^(-mJ/5).
+
+    Rp, Mp in Earth units; Rs in solar radii; Teq in K (use kempton_eq_temp_k);
+    mJ = host-star apparent J magnitude. Returns None if any input is missing.
+    """
+    if not _ok(radius_earth, mass_earth, eq_temp_k, st_rad_sun) or j_mag is None:
+        return None
+    scale = _tsm_scale_factor(radius_earth)
+    tsm = (scale * (radius_earth ** 3) * eq_temp_k
+           / (mass_earth * (st_rad_sun ** 2)) * (10.0 ** (-j_mag / 5.0)))
+    return tsm if math.isfinite(tsm) and tsm >= 0 else None
+
+
+def _planck_ratio_7_5um(t_hot: float, t_cold: float) -> float:
+    """B_7.5um(t_hot) / B_7.5um(t_cold); the lambda^5 prefactor cancels."""
+    lam = 7.5e-6
+    x_hot = _HC_OVER_K_M_K / (lam * t_hot)
+    x_cold = _HC_OVER_K_M_K / (lam * t_cold)
+    return (math.expm1(x_cold)) / (math.expm1(x_hot))
+
+
+def emission_spectroscopy_metric(
+    radius_earth: Num, eq_temp_k: Num, st_teff: Num,
+    st_rad_sun: Num, k_mag: Num,
+) -> Num:
+    """ESM = 4.29e6 * [B_7.5(1.10 Teq) / B_7.5(Tstar)] * (Rp/Rs)^2 * 10^(-mK/5).
+
+    Secondary-eclipse (thermal emission) figure of merit; better for hot rocky
+    worlds around bright stars. Rp, Rs converted to common units internally.
+    """
+    if not _ok(radius_earth, eq_temp_k, st_teff, st_rad_sun) or k_mag is None:
+        return None
+    t_day = 1.10 * eq_temp_k
+    depth = (radius_earth / (st_rad_sun * RSUN_IN_RE)) ** 2
+    esm = (4.29e6 * _planck_ratio_7_5um(t_day, st_teff) * depth
+           * (10.0 ** (-k_mag / 5.0)))
+    return esm if math.isfinite(esm) and esm >= 0 else None
+
+
+def tsm_threshold(radius_earth: Num) -> float:
+    """Kempton 2018 recommended 'worth pursuing' TSM by radius bin."""
+    if radius_earth is None:
+        return 90.0
+    if radius_earth < 1.5:
+        return 12.0        # small sample; practical bar for terrestrial worlds
+    if radius_earth < 10.0:
+        return 90.0
+    return 96.0

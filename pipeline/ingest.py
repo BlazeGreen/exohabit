@@ -44,6 +44,10 @@ COLUMNS = [
     ("st_spectype", "st_spectype"),
     ("sy_dist", "sy_dist"), ("sy_disterr1", "sy_disterr1"),
     ("ra", "ra"), ("dec", "dec"),
+    # observability (Kempton et al. 2018 TSM / ESM)
+    ("tran_flag", "tran_flag"),
+    ("sy_jmag", "sy_jmag"), ("sy_kmag", "sy_kmag"),
+    ("pl_trandep", "pl_trandep"), ("pl_trandur", "pl_trandur"),
 ]
 
 DEMO_PATH = os.path.join(os.path.dirname(__file__), "demo_snapshot.json")

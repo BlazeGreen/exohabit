@@ -34,9 +34,16 @@ export default function PlanetCard({ p, rank }: { p: IndexRow; rank?: number }) 
 
       <div className="hairline flex items-center justify-between gap-2 pt-3">
         <ConfidencePill value={p.confidence} label={p.confidence_label} />
-        {p.in_conservative_hz && (
-          <span className="label-eyebrow shrink-0 whitespace-nowrap text-cyan">● IN HZ</span>
-        )}
+        <span className="flex shrink-0 items-center gap-2">
+          {p.tsm_tier === "strong" && (
+            <span className="label-eyebrow whitespace-nowrap text-cyan" title={`TSM ${p.tsm?.toFixed(0)}`}>
+              ◎ TSM
+            </span>
+          )}
+          {p.in_conservative_hz && (
+            <span className="label-eyebrow whitespace-nowrap text-cyan">● IN HZ</span>
+          )}
+        </span>
       </div>
     </Link>
   );

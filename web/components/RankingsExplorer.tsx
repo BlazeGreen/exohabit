@@ -5,10 +5,11 @@ import type { IndexRow } from "@/lib/types";
 import { PC_TO_LY } from "@/lib/format";
 import PlanetCard from "./PlanetCard";
 
-type SortKey = "score" | "esi" | "distance" | "recent" | "confidence";
+type SortKey = "score" | "esi" | "distance" | "recent" | "confidence" | "tsm";
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: "score", label: "Habitability potential" },
+  { key: "tsm", label: "Observability (TSM)" },
   { key: "esi", label: "Earth similarity" },
   { key: "distance", label: "Nearest" },
   { key: "recent", label: "Recently discovered" },
@@ -38,12 +39,15 @@ export default function RankingsExplorer() {
   const [earthSized, setEarthSized] = useState(false);
   const [quietStar, setQuietStar] = useState(false);
   const [measuredMass, setMeasuredMass] = useState(false);
+  const [transitingOnly, setTransitingOnly] = useState(false);
+  const [charStrong, setCharStrong] = useState(false);
 
   const [score, setScore] = useState<Range>({ ...EMPTY });
   const [radius, setRadius] = useState<Range>({ ...EMPTY });
   const [temp, setTemp] = useState<Range>({ ...EMPTY });
   const [dist, setDist] = useState<Range>({ ...EMPTY });
   const [year, setYear] = useState<Range>({ ...EMPTY });
+  const [tsm, setTsm] = useState<Range>({ ...EMPTY });
   const [starClass, setStarClass] = useState<string>("");
   const [bandSel, setBandSel] = useState<string>("");
   const [minConfidence, setMinConfidence] = useState(0);
@@ -56,13 +60,15 @@ export default function RankingsExplorer() {
 
   const activeCount =
     (hzOnly ? 1 : 0) + (earthSized ? 1 : 0) + (quietStar ? 1 : 0) + (measuredMass ? 1 : 0) +
-    [score, radius, temp, dist, year].filter((r) => r.min !== "" || r.max !== "").length +
+    (transitingOnly ? 1 : 0) + (charStrong ? 1 : 0) +
+    [score, radius, temp, dist, year, tsm].filter((r) => r.min !== "" || r.max !== "").length +
     (starClass ? 1 : 0) + (bandSel ? 1 : 0) + (minConfidence > 0 ? 1 : 0) + (q.trim() ? 1 : 0);
 
   function reset() {
     setQ(""); setHzOnly(false); setEarthSized(false); setQuietStar(false); setMeasuredMass(false);
+    setTransitingOnly(false); setCharStrong(false);
     setScore({ ...EMPTY }); setRadius({ ...EMPTY }); setTemp({ ...EMPTY });
-    setDist({ ...EMPTY }); setYear({ ...EMPTY }); setStarClass(""); setBandSel("");
+    setDist({ ...EMPTY }); setYear({ ...EMPTY }); setTsm({ ...EMPTY }); setStarClass(""); setBandSel("");
     setMinConfidence(0);
   }
 
@@ -78,6 +84,8 @@ export default function RankingsExplorer() {
     if (earthSized) out = out.filter((r) => r.radius_earth != null && r.radius_earth >= 0.7 && r.radius_earth <= 1.6);
     if (quietStar) out = out.filter((r) => r.st_teff != null && r.st_teff >= 3800 && r.st_teff <= 6200);
     if (measuredMass) out = out.filter((r) => !r.mass_modelled);
+    if (transitingOnly) out = out.filter((r) => r.transiting);
+    if (charStrong) out = out.filter((r) => r.tsm_tier === "strong");
 
     if (score.min !== "" || score.max !== "") out = out.filter((r) => inRange(r.score, score));
     if (radius.min !== "" || radius.max !== "") out = out.filter((r) => inRange(r.radius_earth, radius));
@@ -85,18 +93,20 @@ export default function RankingsExplorer() {
     if (dist.min !== "" || dist.max !== "")
       out = out.filter((r) => inRange(r.distance_pc == null ? null : r.distance_pc * PC_TO_LY, dist));
     if (year.min !== "" || year.max !== "") out = out.filter((r) => inRange(r.disc_year, year));
+    if (tsm.min !== "" || tsm.max !== "") out = out.filter((r) => inRange(r.tsm, tsm));
     if (starClass) out = out.filter((r) => (r.spectype ?? "").trim().toUpperCase().startsWith(starClass));
     if (bandSel) out = out.filter((r) => r.band.toUpperCase().startsWith(bandSel));
 
     const by = {
       score: (a: IndexRow, b: IndexRow) => b.score - a.score,
+      tsm: (a: IndexRow, b: IndexRow) => (b.tsm ?? -1) - (a.tsm ?? -1),
       esi: (a: IndexRow, b: IndexRow) => (b.esi ?? -1) - (a.esi ?? -1),
       distance: (a: IndexRow, b: IndexRow) => (a.distance_pc ?? 1e9) - (b.distance_pc ?? 1e9),
       recent: (a: IndexRow, b: IndexRow) => (b.disc_year ?? 0) - (a.disc_year ?? 0),
       confidence: (a: IndexRow, b: IndexRow) => b.confidence - a.confidence,
     }[sort];
     return [...out].sort(by);
-  }, [rows, q, sort, hzOnly, earthSized, quietStar, measuredMass, score, radius, temp, dist, year, starClass, bandSel, minConfidence]);
+  }, [rows, q, sort, hzOnly, earthSized, quietStar, measuredMass, transitingOnly, charStrong, score, radius, temp, dist, year, tsm, starClass, bandSel, minConfidence]);
 
   return (
     <div>
@@ -112,15 +122,18 @@ export default function RankingsExplorer() {
           <Chip active={earthSized} onClick={() => setEarthSized((v) => !v)} label="Earth-sized (0.7–1.6 R⊕)" />
           <Chip active={hzOnly} onClick={() => setHzOnly((v) => !v)} label="Habitable zone" />
           <Chip active={quietStar} onClick={() => setQuietStar((v) => !v)} label="Stable host star (F/G/K)" />
+          <Chip active={transitingOnly} onClick={() => setTransitingOnly((v) => !v)} label="Transiting only" />
+          <Chip active={charStrong} onClick={() => setCharStrong((v) => !v)} label="Characterizable (TSM strong)" />
           <Chip active={measuredMass} onClick={() => setMeasuredMass((v) => !v)} label="Measured mass only" />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <RangeFilter label="Potential" value={score} onChange={setScore} placeholder={["0", "100"]} />
           <RangeFilter label="Radius (R⊕)" value={radius} onChange={setRadius} placeholder={["0", "20"]} />
           <RangeFilter label="Eq. temp (K)" value={temp} onChange={setTemp} placeholder={["0", "3000"]} />
           <RangeFilter label="Distance (ly)" value={dist} onChange={setDist} placeholder={["0", "5000"]} />
           <RangeFilter label="Discovered" value={year} onChange={setYear} placeholder={["1995", "2026"]} />
+          <RangeFilter label="TSM" value={tsm} onChange={setTsm} placeholder={["0", "500"]} />
         </div>
 
         <div className="flex flex-wrap items-center gap-4">

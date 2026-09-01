@@ -83,7 +83,23 @@ export interface Planet {
   fields: Record<string, Field>;
   hz_bounds_au: Record<string, number> | null;
   hz_position: HzPosition | null;
+  observability: Observability;
   assessment: Assessment;
+}
+
+export interface Observability {
+  transiting: boolean;
+  tsm: number | null;
+  esm: number | null;
+  tsm_threshold: number;
+  tsm_tier: "strong" | "marginal" | "weak" | null;
+  esm_tier: "strong" | "marginal" | "weak" | null;
+  kempton_eq_temp_k: number | null;
+  transit_depth_ppm: number | null;
+  transit_duration_hr: number | null;
+  st_jmag: number | null;
+  st_kmag: number | null;
+  notes: string[];
 }
 
 export interface IndexRow {
@@ -107,6 +123,11 @@ export interface IndexRow {
   in_conservative_hz: boolean;
   in_optimistic_hz: boolean;
   mass_modelled: boolean;
+  transiting: boolean;
+  tsm: number | null;
+  esm: number | null;
+  tsm_tier: "strong" | "marginal" | "weak" | null;
+  st_jmag: number | null;
 }
 
 export interface Meta {
