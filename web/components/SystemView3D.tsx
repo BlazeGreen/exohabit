@@ -6,6 +6,17 @@ import { useRouter } from "next/navigation";
 import * as THREE from "three";
 import type { SystemPlanet } from "./SystemView2D";
 
+/** Deterministic 0–1 hash from a string, so each orbit's shape is stable
+ *  across renders (not jittering) but varies planet to planet. */
+function hash01(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
 function starColor(teff: number | null): string {
   if (teff == null) return "#fff6e0";
   if (teff >= 10000) return "#9db4ff";
@@ -135,26 +146,42 @@ function Planet({ planet, orbitR, phase }: { planet: SystemPlanet; orbitR: numbe
   const pr = 0.12 + Math.min(0.42, (planet.radiusEarth ?? 1) * 0.12);
   const dotColor = planet.isTarget ? "#ffffff" : planet.inConservativeHz ? "#35e2d0" : "#9aa7c2";
 
+  // Cosmetic elliptical orbit — not physically derived. Each orbit gets a
+  // stable per-planet eccentricity, major-axis orientation and slight tilt so
+  // the system doesn't read as a stack of perfect coplanar circles.
+  const ecc = 0.05 + hash01(planet.id) * 0.24;
+  const tilt = (hash01(planet.id + "~i") - 0.5) * 0.34;
+  const spin = hash01(planet.id + "~r") * Math.PI * 2;
+  const A = orbitR;
+  const B = orbitR * Math.sqrt(1 - ecc * ecc);
+  const focus = A * ecc; // shift so the star sits near a focus
+
+  const squash = B / A; // non-uniform scale turns the circular ring into an ellipse
+
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    const a = phase + clock.elapsedTime * speed;
-    ref.current.position.set(Math.cos(a) * orbitR, 0, Math.sin(a) * orbitR);
+    const t = phase + clock.elapsedTime * speed;
+    // circle of radius A in local space; the parent group squashes Z and
+    // offsets by the focus, so the visible path is an ellipse with the star
+    // near one focus
+    ref.current.position.set(A * Math.cos(t), 0, A * Math.sin(t));
   });
 
   return (
-    <>
-      {/* orbit path */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[orbitR - 0.015, orbitR + 0.015, 128]} />
-        <meshBasicMaterial
-          color={planet.isTarget ? "#35e2d0" : "#3b4560"}
-          transparent
-          opacity={planet.isTarget ? 0.7 : 0.45}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+    <group rotation={[0, spin, 0]}>
+      <group rotation={[tilt, 0, 0]} scale={[1, 1, squash]} position={[-focus, 0, 0]}>
+        {/* orbit path — circular ring, squashed to an ellipse by the parent scale */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[A - 0.02, A + 0.02, 160]} />
+          <meshBasicMaterial
+            color={planet.isTarget ? "#35e2d0" : "#3b4560"}
+            transparent
+            opacity={planet.isTarget ? 0.8 : 0.5}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
 
-      <group ref={ref}>
+        <group ref={ref}>
         <mesh
           onPointerOver={(e) => {
             e.stopPropagation();
@@ -196,7 +223,8 @@ function Planet({ planet, orbitR, phase }: { planet: SystemPlanet; orbitR: numbe
             {planet.name.replace(/^.*\s/, "")}
           </div>
         </Html>
+        </group>
       </group>
-    </>
+    </group>
   );
 }

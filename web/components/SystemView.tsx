@@ -1,5 +1,5 @@
 "use client";
-import { Component, type ReactNode } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import SystemView2D, { type SystemPlanet } from "./SystemView2D";
 
@@ -21,12 +21,31 @@ export interface SystemViewProps {
   hzOptimisticAu: [number, number] | null;
 }
 
-/** Renders the 3D system view; if WebGL / the 3D renderer fails for any reason,
- *  falls back to the 2D SVG diagram so the section never breaks. */
+/** 2D SVG diagram by default (fast, reliable). An opt-in 3D WebGL view is
+ *  available via the toggle. */
 export default function SystemView(props: SystemViewProps) {
+  const [mode, setMode] = useState<"2d" | "3d">("2d");
   return (
-    <WebGLBoundary
-      fallback={
+    <div>
+      <div className="mb-3 flex justify-end">
+        <div className="inline-flex overflow-hidden rounded-full border border-[var(--border)] text-xs">
+          {(["2d", "3d"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={
+                "px-3 py-1 transition-colors " +
+                (mode === m ? "bg-[var(--cyan-dim)] text-cyan" : "text-text-faint hover:text-text")
+              }
+            >
+              {m === "2d" ? "2D" : "3D"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {mode === "3d" ? (
+        <SystemView3D {...props} />
+      ) : (
         <SystemView2D
           planets={props.planets}
           starName={props.starName}
@@ -35,19 +54,7 @@ export default function SystemView(props: SystemViewProps) {
           hzConservativeAu={props.hzConservativeAu}
           hzOptimisticAu={props.hzOptimisticAu}
         />
-      }
-    >
-      <SystemView3D {...props} />
-    </WebGLBoundary>
+      )}
+    </div>
   );
-}
-
-class WebGLBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
-  }
 }

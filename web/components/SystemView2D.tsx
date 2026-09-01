@@ -21,11 +21,21 @@ function starColor(teff: number | null): string {
   return "#ff8a65";
 }
 
+/** Deterministic 0–1 hash so each orbit's shape is stable, but varies per planet. */
+function hash01(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
 const SIZE = 560;
 const CX = SIZE / 2;
 const CY = SIZE / 2;
-const R_MIN = 46;
-const R_MAX = SIZE / 2 - 40;
+const R_MIN = 44;
+const R_MAX = SIZE / 2 - 82;
 
 export default function SystemView2D({
   planets,
@@ -45,24 +55,43 @@ export default function SystemView2D({
   const [selected, setSelected] = useState<string | null>(null);
   const withOrbit = planets.filter((p) => p.semiMajorAu != null && p.semiMajorAu > 0);
 
-  const { rScale, maxA } = useMemo(() => {
+  const rScale = useMemo(() => {
     const as = withOrbit.map((p) => p.semiMajorAu!);
     const hzMax = hzOptimisticAu?.[1] ?? hzConservativeAu?.[1] ?? 0;
     const maxA = Math.max(0.05, ...as, hzMax * 1.15);
     const minA = Math.min(...as.filter((a) => a > 0), maxA / 50);
     const logMin = Math.log10(Math.max(minA, maxA / 200));
     const logMax = Math.log10(maxA);
-    return {
-      maxA,
-      rScale: (a: number) => {
-        const t = (Math.log10(Math.max(a, maxA / 200)) - logMin) / (logMax - logMin || 1);
-        return R_MIN + Math.max(0, Math.min(1, t)) * (R_MAX - R_MIN);
-      },
+    return (a: number) => {
+      const t = (Math.log10(Math.max(a, maxA / 200)) - logMin) / (logMax - logMin || 1);
+      return R_MIN + Math.max(0, Math.min(1, t)) * (R_MAX - R_MIN);
     };
   }, [withOrbit, hzConservativeAu, hzOptimisticAu]);
 
+  // one cosmetic ellipse per planet: eccentricity + major-axis rotation from a
+  // stable hash of the id. Not physically derived — the caption says so.
+  const orbits = useMemo(
+    () =>
+      withOrbit.map((p, i) => {
+        const A = rScale(p.semiMajorAu!);
+        const ecc = 0.12 + hash01(p.id) * 0.4; // 0.12–0.52, cosmetic
+        const B = A * Math.sqrt(1 - ecc * ecc);
+        const c = A * ecc; // star sits at a focus, this far from the ellipse centre
+        const rotDeg = hash01(p.id + "~r") * 360;
+        const rot = (rotDeg * Math.PI) / 180;
+        const theta = (i / withOrbit.length) * Math.PI * 2 + Math.PI / 5;
+        // planet position relative to the star (a focus), then rotate the whole ellipse
+        const lx = A * Math.cos(theta) - c;
+        const ly = B * Math.sin(theta);
+        const px = CX + lx * Math.cos(rot) - ly * Math.sin(rot);
+        const py = CY + lx * Math.sin(rot) + ly * Math.cos(rot);
+        return { p, A, B, c, rotDeg, px, py };
+      }),
+    [withOrbit, rScale]
+  );
+
   const color = starColor(starTeff);
-  const starR = 10 + Math.min(16, (starRadiusSun ?? 1) * 8);
+  const starR = 9 + Math.min(14, (starRadiusSun ?? 1) * 8);
 
   return (
     <div className="relative">
@@ -74,41 +103,42 @@ export default function SystemView2D({
           </radialGradient>
         </defs>
 
-        {/* optimistic + conservative HZ rings */}
+        {/* HZ bands (kept circular — they're zones, not orbits) */}
         {hzOptimisticAu && (
-          <circle cx={CX} cy={CY} r={rScale(hzOptimisticAu[1])} fill="none" stroke="var(--amber)" strokeOpacity={0.35} strokeWidth={rScale(hzOptimisticAu[0]) - rScale(hzOptimisticAu[1])} />
+          <circle cx={CX} cy={CY} r={rScale(hzOptimisticAu[1])} fill="none" stroke="var(--amber)" strokeOpacity={0.3} strokeWidth={rScale(hzOptimisticAu[0]) - rScale(hzOptimisticAu[1])} />
         )}
         {hzConservativeAu && (
-          <circle cx={CX} cy={CY} r={rScale(hzConservativeAu[1])} fill="none" stroke="var(--cyan)" strokeOpacity={0.28} strokeWidth={rScale(hzConservativeAu[0]) - rScale(hzConservativeAu[1])} />
+          <circle cx={CX} cy={CY} r={rScale(hzConservativeAu[1])} fill="none" stroke="var(--cyan)" strokeOpacity={0.24} strokeWidth={rScale(hzConservativeAu[0]) - rScale(hzConservativeAu[1])} />
         )}
 
-        {/* orbit paths */}
-        {withOrbit.map((p) => (
-          <circle key={p.id} cx={CX} cy={CY} r={rScale(p.semiMajorAu!)} fill="none" stroke="var(--border-strong)" strokeWidth={1} strokeDasharray={p.isTarget ? "0" : "2 3"} />
+        {/* elliptical orbit paths */}
+        {orbits.map(({ p, A, B, c, rotDeg }) => (
+          <ellipse
+            key={p.id}
+            cx={CX - c}
+            cy={CY}
+            rx={A}
+            ry={B}
+            transform={`rotate(${rotDeg} ${CX} ${CY})`}
+            fill="none"
+            stroke={p.isTarget ? "var(--cyan)" : "var(--border-strong)"}
+            strokeOpacity={p.isTarget ? 0.9 : 0.6}
+            strokeWidth={p.isTarget ? 1.4 : 1}
+            strokeDasharray={p.isTarget ? "0" : "2 3"}
+          />
         ))}
 
         {/* star */}
         <circle cx={CX} cy={CY} r={starR * 3} fill="url(#starGlow)" />
         <circle cx={CX} cy={CY} r={starR} fill={color} />
         {starName && (
-          <text
-            x={CX}
-            y={CY + starR + 16}
-            textAnchor="middle"
-            fontSize="12"
-            fontWeight={600}
-            fill="var(--text)"
-          >
+          <text x={CX} y={CY + starR + 17} textAnchor="middle" fontSize="12.5" fontWeight={600} fill="var(--text)">
             ★ {starName}
           </text>
         )}
 
         {/* planets */}
-        {withOrbit.map((p, i) => {
-          const angle = (i / withOrbit.length) * Math.PI * 2 + Math.PI / 5;
-          const r = rScale(p.semiMajorAu!);
-          const px = CX + r * Math.cos(angle);
-          const py = CY + r * Math.sin(angle);
+        {orbits.map(({ p, px, py }) => {
           const pr = 4 + Math.min(10, (p.radiusEarth ?? 1) * 3.2);
           const isSel = selected === p.id || p.isTarget;
           return (
@@ -130,8 +160,8 @@ export default function SystemView2D({
         })}
       </svg>
       <p className="mt-1 text-center text-[0.65rem] text-text-faint">
-        Illustrative — orbital distances on a log scale for readability, not to true astronomical
-        scale. Planet order at a given radius is not necessarily true azimuthal position.
+        Illustrative — orbital distances are on a logarithmic scale and orbit shapes are stylised,
+        not to true astronomical scale or measured eccentricity.
       </p>
       {withOrbit.some((p) => !p.isTarget) && (
         <div className="mt-3 flex flex-wrap justify-center gap-2">
