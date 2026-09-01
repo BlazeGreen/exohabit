@@ -1,0 +1,40 @@
+{
+  "_comment": "Single source of truth for the ExoHabit Habitability Potential model. Read by the Python pipeline (build time) AND the web app (World Lab, runtime). Weights are a defensible editorial choice, NOT established science. Edit freely.",
+  "model_version": "hp-0.3.0",
+  "score_scale": 100,
+  "neutral_subscore": 0.5,
+  "weights": {
+    "temperature_suitability": 0.25,
+    "habitable_zone_position": 0.20,
+    "planet_properties": 0.15,
+    "stellar_environment": 0.15,
+    "orbital_characteristics": 0.10,
+    "evidence_completeness": 0.15
+  },
+  "assumptions": {
+    "bond_albedo": 0.30,
+    "bond_albedo_range": [0.05, 0.6],
+    "solar_teff_k": 5772,
+    "earth_eq_temp_k": 255,
+    "black_body_1au_k": 278.5,
+    "esi_reference": {
+      "radius_earth": 1.0,
+      "density_gcc": 5.51,
+      "escape_velocity_kms": 11.19,
+      "surface_temp_k": 288.0
+    }
+  },
+  "bands": {
+    "score": [
+      { "min": 75, "label": "HIGH POTENTIAL" },
+      { "min": 50, "label": "MODERATE POTENTIAL" },
+      { "min": 25, "label": "LOW POTENTIAL" },
+      { "min": 0, "label": "MINIMAL POTENTIAL" }
+    ],
+    "confidence": [
+      { "min": 0.66, "label": "HIGH" },
+      { "min": 0.4, "label": "MEDIUM" },
+      { "min": 0.0, "label": "LOW" }
+    ]
+  }
+}

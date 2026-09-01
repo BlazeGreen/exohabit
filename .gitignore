@@ -1,0 +1,26 @@
+node_modules/
+.next/
+out/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.env.local
+
+# Editor / agent tooling — not part of the project
+.claude/
+web/CLAUDE.md
+web/AGENTS.md
+AGENTS.md
+CLAUDE.md
+
+# Regenerable pipeline artifacts (run `pipeline/build.py` to recreate).
+# The committed data/index.json, data/meta.json and data/planets/*.json
+# ARE checked in — they're what the frontend builds against without needing
+# Python at deploy time.
+data/planets.json
+data/planets.raw.json
+
+# Synced into web/public/data at build time from data/ (see web/scripts/sync-data.mjs)
+web/public/data/

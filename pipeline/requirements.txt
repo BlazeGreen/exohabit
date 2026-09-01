@@ -1,0 +1,4 @@
+# ExoHabit data pipeline. Deliberately tiny: the scientific layer is plain
+# Python + math, so the whole catalogue (~6k planets) builds in a few seconds
+# with no heavyweight numeric stack.
+requests>=2.31
