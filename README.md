@@ -54,6 +54,20 @@ npm run dev                                   # http://localhost:3000
 `npm run dev` / `npm run build` automatically sync `data/` into `web/public/data/`
 via `web/scripts/sync-data.mjs`.
 
+The repo already contains the built `data/` — to just run the site, skip step 1
+and go straight to `cd web && npm install && npm run dev`.
+
+**Windows:** same steps, but use `python` instead of `python3` and the venv
+binaries live at `.venv\Scripts\` instead of `.venv/bin/`:
+
+```bat
+python -m venv .venv
+.venv\Scripts\pip.exe install -r pipeline\requirements.txt
+.venv\Scripts\python.exe pipeline\build.py
+```
+
+The `cd web` / `npm` steps are identical on every platform.
+
 ## Deploy (Vercel)
 
 1. Import the repo, set **Root Directory = `web`**.
