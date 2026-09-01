@@ -11,6 +11,13 @@ const src = path.resolve(here, "..", "..", "data");
 const dest = path.resolve(here, "..", "public", "data");
 
 if (!existsSync(src)) {
+  // Deploy environments that only check out the `web/` subtree won't have
+  // ../data. That's fine as long as a previous sync (committed) left
+  // public/data in place — skip rather than fail the build.
+  if (existsSync(path.join(dest, "index.json"))) {
+    console.warn(`[sync-data] ../data not present; using the committed public/data as-is`);
+    process.exit(0);
+  }
   console.error(`[sync-data] source not found: ${src}. Run pipeline/build.py first.`);
   process.exit(1);
 }
