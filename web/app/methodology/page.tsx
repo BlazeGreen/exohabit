@@ -3,15 +3,14 @@ import Disclaimer from "@/components/Disclaimer";
 import ProvenanceTag from "@/components/ProvenanceTag";
 import { DIMENSION_LABEL } from "@/lib/format";
 
-const STAGES = [
-  { k: "NASA Exoplanet Archive", d: "pscomppars table, TAP/ADQL, one row per confirmed planet" },
-  { k: "Ingestion", d: "HTTP fetch with retries; bundled snapshot if unreachable" },
-  { k: "Validation", d: "type coercion, NaN/inf rejection, per-row isolation" },
-  { k: "Normalization", d: "units, de-logging luminosity, provenance tagging" },
-  { k: "Feature engineering", d: "Kopparapu HZ, T_eq, density, escape velocity, ESI" },
-  { k: "Habitability model", d: "weighted physics score + viability gate + confidence" },
-  { k: "Static JSON build", d: "index.json + per-planet files, committed to the repo" },
-  { k: "Frontend", d: "Next.js reads at build time; World Lab recomputes live in-browser" },
+const FLOW = [
+  { k: "Source measurements", d: "Planetary and stellar parameters from the NASA Exoplanet Archive" },
+  { k: "Derived quantities", d: "Luminosity, incident flux and equilibrium temperature where not directly published" },
+  { k: "Habitable-zone geometry", d: "Kopparapu flux boundaries evaluated for the host star" },
+  { k: "Bulk properties & similarity", d: "Density, escape velocity, Earth Similarity Index" },
+  { k: "Dimension indicators", d: "Six bounded sub-scores spanning temperature, orbit, planet, star and data quality" },
+  { k: "Habitability Potential", d: "Weighted combination, then a physical viability gate" },
+  { k: "Confidence", d: "Evidence completeness and measurement precision, reported separately" },
 ];
 
 export default function MethodologyPage() {
@@ -19,11 +18,14 @@ export default function MethodologyPage() {
   return (
     <div className="mx-auto max-w-4xl px-5 pb-24 pt-12">
       <p className="label-eyebrow mb-2">Methodology</p>
-      <h1 className="font-display text-3xl font-semibold text-text">How ExoHabit Actually Works</h1>
+      <h1 className="font-display text-3xl font-semibold text-text">
+        How ExoHabit assesses habitability potential
+      </h1>
       <p className="mt-3 text-sm text-text-dim">
-        Judges should be able to challenge every number on this site. This page explains exactly
-        where each one comes from, what assumptions it rests on, and where it should not be
-        trusted.
+        ExoHabit turns published planetary and stellar measurements into a single, interpretable
+        estimate of how promising a world is for follow-up study. This page documents the data,
+        the equations, the scoring function and its assumptions, so that any figure on the site
+        can be traced to its origin.
       </p>
 
       <div className="mt-6">
@@ -32,135 +34,165 @@ export default function MethodologyPage() {
 
       <Section title="1 · Data source">
         <p>
-          Every planet on ExoHabit comes from the{" "}
-          <strong className="text-text">NASA Exoplanet Archive</strong>'s{" "}
+          All planetary and stellar parameters come from the{" "}
+          <strong className="text-text">NASA Exoplanet Archive</strong>, specifically the{" "}
           <code className="rounded bg-white/5 px-1 py-0.5 text-[0.85em]">pscomppars</code>{" "}
-          (Planetary Systems Composite Parameters) table, pulled live via the TAP/ADQL sync
-          endpoint at build time. Each row is the archive's best available published value for
-          that parameter, already reconciled across papers. Current build:{" "}
-          <span className="num text-text">{meta.n_planets.toLocaleString()} planets</span>,
-          mode <span className="text-cyan">{meta.ingest_mode}</span>, fetched{" "}
-          {new Date(meta.fetched_at).toUTCString()}. If the live archive is unreachable, the build
-          falls back to a bundled snapshot of ~30 well-studied planets covering the same schema, so
-          the app never breaks — that fallback is always labelled in the build metadata, never
-          silently swapped in.
+          (Planetary Systems Composite Parameters) table, which provides one row per confirmed
+          planet with the archive&rsquo;s best published value for each parameter and its
+          1&sigma; uncertainties. The catalogue is retrieved through the archive&rsquo;s TAP
+          service. This build covers{" "}
+          <span className="num text-text">{meta.n_planets.toLocaleString()}</span> confirmed
+          planets &mdash; every one with a measured radius or mass &mdash; and is current as of{" "}
+          {new Date(meta.fetched_at).toISOString().slice(0, 10)}.
         </p>
       </Section>
 
-      <Section title="2 · Data processing">
-        <p>
-          A Python pipeline (<code className="rounded bg-white/5 px-1 py-0.5 text-[0.85em]">pipeline/</code>{" "}
-          in the repo) ingests, validates and normalizes every row independently — one malformed
-          record is logged and skipped, never fatal to the build ({meta.n_skipped} skipped this
-          run). Output is committed static JSON: a slim index for list/search views, and one file
-          per planet for detail pages. There is no runtime database or backend service — the
-          "pipeline" is a build step, which is a deliberate scalability choice: the whole catalogue
-          ships as CDN-cached static data with nothing to keep alive.
+      <Section title="2 · Provenance of every value">
+        <p className="mb-3">
+          Each quantity shown on a planet page carries one of four provenance labels, so measured
+          data is never confused with an estimate:
         </p>
-      </Section>
-
-      <Section title="3 · Provenance — what's real vs. estimated">
-        <p className="mb-3">Every value on this site is tagged with one of four provenance levels:</p>
         <div className="flex flex-col gap-2.5">
-          <ProvenanceRow p="observed" text="Taken directly from the archive — a published measurement." />
-          <ProvenanceRow p="derived" text="Computed from observed values via a stated physical equation (e.g. equilibrium temperature from insolation)." />
-          <ProvenanceRow p="modelled" text="Estimated from a statistical relation, not a direct measurement (e.g. mass from radius when no mass is published)." />
-          <ProvenanceRow p="unknown" text="Not available. Never invented — propagated as null and it costs the planet evidence-completeness score." />
+          <ProvenanceRow p="observed" text="A published measurement, taken directly from the archive." />
+          <ProvenanceRow p="derived" text="Computed from observed values through a stated physical equation — for example, equilibrium temperature from incident flux." />
+          <ProvenanceRow p="modelled" text="Estimated from a statistical relation rather than measured — for example, mass inferred from radius when no mass is published." />
+          <ProvenanceRow p="unknown" text="Not available. Left undefined rather than imputed, and reflected in the planet's evidence-completeness score." />
         </div>
       </Section>
 
-      <Section title="4 · Physics calculations">
-        <ul className="list-disc space-y-2 pl-5">
-          <li>
-            <strong className="text-text">Habitable zone</strong> — Kopparapu et al. (2013, 2014)
-            flux-boundary parameterization as a function of stellar effective temperature
-            (conservative: runaway greenhouse → maximum greenhouse; optimistic: recent Venus →
-            early Mars).
-          </li>
-          <li>
-            <strong className="text-text">Equilibrium temperature</strong> — T_eq = 278.5 K ×
-            (1 − A_B)^0.25 × (S/S⊕)^0.25, Bond albedo A_B = 0.30 (Earth-like) unless overridden in
-            World Lab. This is a no-greenhouse blackbody estimate, not a surface temperature.
-          </li>
-          <li>
-            <strong className="text-text">Density / escape velocity</strong> — from mass and radius
-            under a uniform-sphere assumption; mass is modelled from radius (Chen &amp; Kipping
-            2017, approximate median relation) when unmeasured.
-          </li>
-          <li>
-            <strong className="text-text">Earth Similarity Index</strong> — Schulze-Makuch et al.
-            (2011), geometric mean of radius/density/escape-velocity/temperature similarity to
-            Earth. High ESI does <strong className="text-text">not</strong> imply habitability.
-          </li>
+      <Section title="3 · Derived physical quantities">
+        <ul className="flex flex-col gap-3">
+          <Item label="Stellar luminosity">
+            When not published, luminosity is computed from the star&rsquo;s radius and effective
+            temperature, L / L<sub>&#9737;</sub> = (R / R<sub>&#9737;</sub>)&sup2; (T<sub>eff</sub>{" "}
+            / T<sub>&#9737;</sub>)<sup>4</sup>.
+          </Item>
+          <Item label="Incident stellar flux">
+            The bolometric flux a planet receives, in Earth units:{" "}
+            S / S<sub>&oplus;</sub> = (L / L<sub>&#9737;</sub>) / (a / AU)&sup2;, using the
+            semi-major axis.
+          </Item>
+          <Item label="Equilibrium temperature">
+            T<sub>eq</sub> = 278.5 K &times; (1 &minus; A<sub>B</sub>)<sup>0.25</sup> &times;
+            (S / S<sub>&oplus;</sub>)<sup>0.25</sup>, with Bond albedo A<sub>B</sub> = 0.30. This
+            is the temperature a planet radiates at with no atmosphere; it is not a surface
+            temperature, and greenhouse warming is not included.
+          </Item>
+          <Item label="Bulk density and escape velocity">
+            Derived from mass and radius for a uniform sphere. Where mass is not measured it is
+            estimated from radius using the Chen &amp; Kipping (2017) mass&ndash;radius relation
+            and marked as modelled.
+          </Item>
+          <Item label="Habitable zone">
+            Conservative and optimistic zone boundaries are evaluated with the Kopparapu et al.
+            (2013, 2014) parameterisation, a polynomial in the host star&rsquo;s effective
+            temperature. The conservative zone runs from the runaway-greenhouse limit to the
+            maximum-greenhouse limit; the optimistic zone from the recent-Venus limit to the
+            early-Mars limit. The parameterisation is defined for host stars between 2,600 K and
+            7,200 K.
+          </Item>
+          <Item label="Earth Similarity Index">
+            The Schulze-Makuch et al. (2011) index, a weighted geometric combination of how close
+            a planet&rsquo;s radius, density, escape velocity and temperature are to Earth&rsquo;s.
+            It is shown for reference only and is not an input to the habitability score;
+            similarity to Earth does not imply habitability.
+          </Item>
         </ul>
       </Section>
 
-      <Section title="5 · Habitability Potential model">
+      <Section title="4 · Habitability Potential score">
         <p className="mb-4">
-          We deliberately did <strong className="text-text">not</strong> train a model to predict
-          "habitability" — no labelled dataset of confirmed-habitable exoplanets exists, and
-          building one from a self-defined proxy target and then explaining it with SHAP would
-          create a black box that looks rigorous while explaining a label we invented ourselves.
-          Instead, Habitability Potential is a transparent weighted sum of six bounded (0–1)
-          sub-scores:
+          ExoHabit scores habitability potential with an explicit, physically-motivated function
+          rather than a trained classifier. There is no ground-truth catalogue of habitable
+          worlds to learn from, so the score is defined directly: a weighted sum of six bounded
+          (0&ndash;1) indicators, scaled to 0&ndash;100.
         </p>
         <div className="overflow-hidden rounded-xl border border-[var(--border)]">
           <table className="w-full text-sm">
             <tbody>
               {Object.entries(meta.weights).map(([k, w]) => (
                 <tr key={k} className="border-b border-[var(--border)] last:border-0">
-                  <td className="px-4 py-2.5 text-text-dim">{DIMENSION_LABEL[k] ?? k}</td>
-                  <td className="px-4 py-2.5 text-text-faint">{meta.dimension_docs[k]}</td>
-                  <td className="num px-4 py-2.5 text-right text-text">{Math.round(w * 100)}%</td>
+                  <td className="px-4 py-2.5 align-top text-text-dim">{DIMENSION_LABEL[k] ?? k}</td>
+                  <td className="px-4 py-2.5 align-top text-text-faint">{meta.dimension_docs[k]}</td>
+                  <td className="num px-4 py-2.5 text-right align-top text-text">{Math.round(w * 100)}%</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <p className="mt-4">
-          A <strong className="text-text">physical viability gate</strong> is applied after the
-          weighted sum: extreme equilibrium temperature or a clearly gaseous radius scales the
-          score down regardless of how well-measured the planet is, because no amount of good
-          ancillary data makes a 2,000 K lava world a habitability target. None of these weights
-          are established science — they are an explicit, editable editorial choice (
-          <code className="rounded bg-white/5 px-1 py-0.5 text-[0.8em]">pipeline/scoring_config.json</code>
-          ), stated in full rather than hidden inside a trained model.
+          After the weighted sum, a <strong className="text-text">physical viability gate</strong>{" "}
+          scales the score down when a hard constraint is violated &mdash; an equilibrium
+          temperature far outside the range where liquid water is plausible, or a radius firmly in
+          the volatile-envelope regime &mdash; so that a well-measured but physically hopeless
+          world cannot rank highly on the strength of its ancillary data alone. Where the gate is
+          active, the planet page shows both the ungated and gated values.
+        </p>
+        <p className="mt-4">
+          The weighting scheme reflects the relative importance ExoHabit places on each factor for
+          prioritising follow-up observations. It is a modelling choice, not a settled result, and
+          it is applied identically to every planet in the catalogue.
         </p>
       </Section>
 
-      <Section title="6 · Explainability">
+      <Section title="5 · Score interpretation">
         <p>
-          Because the model is linear in its sub-scores, the "Why This Score?" breakdown on every
-          planet page is not an approximation of a black box (as a SHAP explanation of a trained
-          model would be) — it <strong className="text-text">is</strong> the model. Each dimension's
-          contribution is exactly weight × (sub-score − 0.5) × 100, so the bars sum to the score.
+          Because the score is a linear combination of its indicators, it decomposes exactly: each
+          dimension&rsquo;s contribution is its weight multiplied by how far its sub-score sits
+          above or below the neutral midpoint. The &ldquo;Why this score&rdquo; breakdown on every
+          planet page is this decomposition &mdash; the contributions sum to the score with no
+          residual.
         </p>
       </Section>
 
-      <Section title="7 · Confidence">
+      <Section title="6 · Confidence">
         <p>
-          Reported separately from the score. Confidence blends evidence completeness (60%),
-          measurement precision from the archive's own error bars (30%), and a penalty if the host
-          star's temperature fell outside the Kopparapu calibration range and had to be
-          extrapolated (10%). A planet can have a high potential score and low confidence —
-          that combination is flagged, not hidden.
+          Confidence is reported separately from the score and does not change it. It combines the
+          fraction of model inputs that are directly observed rather than modelled or missing
+          (weighted most heavily), the precision of those measurements relative to their published
+          uncertainties, and a penalty when the host star falls outside the calibrated temperature
+          range of the habitable-zone parameterisation. A planet can carry a high potential score
+          at low confidence; that combination is shown explicitly.
         </p>
       </Section>
 
-      <Section title="8 · Known limitations">
+      <Section title="7 · Limitations">
         <ul className="list-disc space-y-2 pl-5">
-          <li>Atmospheric composition is unknown for essentially every exoplanet here — surface greenhouse warming is not modelled.</li>
-          <li>Equilibrium temperature is a no-atmosphere blackbody estimate, not a measured surface temperature.</li>
-          <li>Mass is modelled from radius for planets with no direct mass measurement, using an approximate published relation with real scatter.</li>
-          <li>The Kopparapu habitable-zone parameterization is only calibrated for 2,600–7,200 K host stars; outside that range the boundaries are extrapolated and confidence is penalized accordingly.</li>
-          <li>Scoring weights are an editorial choice, not a scientific consensus — see the config file linked above.</li>
-          <li>Nothing here is a claim about the presence or absence of life.</li>
+          <li>
+            Atmospheric composition is unconstrained for nearly every confirmed exoplanet. Surface
+            temperature, greenhouse warming and surface conditions are therefore not modelled;
+            equilibrium temperature is used throughout.
+          </li>
+          <li>
+            Where planetary mass is not measured it is estimated from radius. The underlying
+            relation has substantial intrinsic scatter, which is flagged but not propagated as an
+            error bar.
+          </li>
+          <li>
+            The habitable-zone parameterisation is calibrated for host stars between 2,600 K and
+            7,200 K. Beyond that range the boundaries are extrapolated and confidence is reduced.
+          </li>
+          <li>
+            Orbital eccentricity is frequently unavailable and is then treated as near-circular
+            for scoring.
+          </li>
+          <li>
+            The scoring weights and shaping functions are a deliberate modelling choice. Different
+            reasonable choices produce a different ordering.
+          </li>
+          <li>
+            A planet with no measured radius bypasses the radius component of the viability gate;
+            an unmeasured giant can therefore score higher than its likely nature warrants.
+          </li>
+          <li>
+            No output of this system is a claim about the presence or absence of life.
+          </li>
         </ul>
       </Section>
 
-      <Section title="Pipeline">
+      <Section title="From measurement to score">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {STAGES.map((s, i) => (
+          {FLOW.map((s, i) => (
             <div key={s.k} className="panel p-3">
               <div className="label-eyebrow mb-1">{String(i + 1).padStart(2, "0")}</div>
               <div className="text-xs font-medium text-text">{s.k}</div>
@@ -168,6 +200,15 @@ export default function MethodologyPage() {
             </div>
           ))}
         </div>
+      </Section>
+
+      <Section title="References">
+        <ul className="flex flex-col gap-1.5 text-xs text-text-faint">
+          <li>NASA Exoplanet Archive, Planetary Systems Composite Parameters table.</li>
+          <li>Kopparapu et al. 2013, ApJ 765, 131; 2014, ApJ 787, L29 &mdash; habitable-zone flux boundaries.</li>
+          <li>Schulze-Makuch et al. 2011, Astrobiology 11, 1041 &mdash; Earth Similarity Index.</li>
+          <li>Chen &amp; Kipping 2017, ApJ 834, 17 &mdash; probabilistic mass&ndash;radius relation.</li>
+        </ul>
       </Section>
     </div>
   );
@@ -179,6 +220,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="font-display text-lg font-medium text-text">{title}</h2>
       <div className="mt-3 text-sm leading-relaxed text-text-dim">{children}</div>
     </section>
+  );
+}
+
+function Item({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <li>
+      <strong className="text-text">{label}</strong> &mdash; {children}
+    </li>
   );
 }
 
