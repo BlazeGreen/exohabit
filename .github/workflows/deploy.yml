@@ -33,6 +33,10 @@ jobs:
           # GitHub Pages serves this project from /<repo>/
           NEXT_PUBLIC_BASE_PATH: /exohabit
         run: npm run build
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web/out
