@@ -2,10 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Planet detail pages beyond the top-300 statically generated at build time
-  // render on demand and read their JSON via fs (lib/data.ts) — make sure the
-  // whole synced data directory is traced into the server function bundle.
+  // render on demand and read their JSON via fs (lib/data.ts). Trace the data
+  // files into that route's function bundle only — not every route.
   outputFileTracingIncludes: {
-    "/**": ["./public/data/**"],
+    "/planets/[id]": ["./public/data/planets/**", "./public/data/index.json"],
   },
 };
 

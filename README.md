@@ -2,14 +2,28 @@
 
 **From raw astronomical measurements to an explainable assessment of alien worlds.**
 
-ExoHabit ranks every confirmed exoplanet with a measured radius or mass by a
-model-derived **Habitability Potential** score, and shows exactly why each world
-scores the way it does — the physics, the assumptions, the confidence, and what
-remains unknown.
+There are ~6,300 confirmed exoplanets and only a few dozen hours of JWST
+atmosphere time per cycle. ExoHabit ranks the whole catalogue by a transparent,
+model-derived **Habitability Potential** score **and** by **observability** with
+current instruments — so a proposal writer or time-allocation committee can see
+which worlds are both worth a closer look and actually characterisable now.
+Every number traces back to either a real measurement or a stated equation.
 
 > This is a model-based assessment of habitability **potential**. It is not a
 > measurement of life, and not proof that any world is habitable. Atmospheric
 > composition and surface conditions are unknown for essentially every exoplanet.
+
+### At a glance (current build)
+
+- **6,347** confirmed planets scored · **41** rank *high potential* (≥ 75)
+- Habitability model: 6 weighted physics indicators + a viability gate +
+  separate confidence, all defined in one editable config file
+- Observation feasibility: **Kempton et al. 2018** TSM / ESM for every
+  transiting planet (**4,731** of them)
+- The punchline: of all 6,347, only **3** clear both bars — high potential
+  *and* a strong transmission metric (TRAPPIST-1 d, e, f)
+- Data: NASA Exoplanet Archive (`pscomppars`), refreshed by re-running the
+  pipeline. No runtime backend or database — the site is static JSON.
 
 ---
 
@@ -20,6 +34,7 @@ remains unknown.
 | Data pipeline | Python 3, `requests` | `pipeline/` |
 | Scientific engine | Kopparapu 2014 HZ, equilibrium temperature, ESI, Chen & Kipping mass–radius | `pipeline/physics.py` |
 | Habitability model | transparent weighted score + physical viability gate + confidence | `pipeline/scoring.py`, `pipeline/scoring_config.json` |
+| Observation feasibility | Kempton et al. 2018 TSM / ESM for transiting planets | `pipeline/physics.py`, `pipeline/features.py` |
 | Frontend | Next.js 16 (App Router), TypeScript, Tailwind v4 | `web/` |
 | Live re-scoring | TS port of the model, runs in-browser for World Lab | `web/lib/model.ts` |
 
@@ -30,11 +45,12 @@ with nothing to keep alive.
 ## Pages
 
 - **Universe Explorer** `/` — hero, catalogue scatter (radius vs. equilibrium temperature), curated shortlists, search
-- **Rankings** `/rankings` — filter + sort the full catalogue
-- **Planet Detail** `/planets/[id]` — score dial, exact "why this score" waterfall, habitable-zone diagram, ESI, evidence/unknowns, system view
+- **Rankings** `/rankings` — filter + sort the full catalogue (potential, radius, temp, distance, TSM, transiting, host-star class, …)
+- **Planet Detail** `/planets/[id]` — score dial, exact "why this score" waterfall, habitable-zone diagram, ESI, observation feasibility (TSM/ESM), evidence/unknowns, 2D/3D planetary-system view
+- **Observation Planner** `/planner` — Habitability Potential vs. TSM/ESM, the "promising and reachable" zone, ranked shortlist
 - **Compare** `/compare` — up to three worlds side by side
 - **World Lab** `/lab` — move any parameter, watch the assessment recompute live (same model as the catalogue)
-- **Methodology** `/methodology` — every equation, assumption and limitation, for judges to challenge
+- **Methodology** `/methodology` — data source, every equation, the scoring function, confidence, and limitations
 
 ## Run it locally
 
