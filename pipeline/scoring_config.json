@@ -26,7 +26,7 @@
   },
   "bands": {
     "score": [
-      { "min": 80, "label": "HIGH POTENTIAL" },
+      { "min": 75, "label": "HIGH POTENTIAL" },
       { "min": 50, "label": "MODERATE POTENTIAL" },
       { "min": 25, "label": "LOW POTENTIAL" },
       { "min": 0, "label": "MINIMAL POTENTIAL" }
