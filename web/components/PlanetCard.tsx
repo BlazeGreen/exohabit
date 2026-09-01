@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { IndexRow } from "@/lib/types";
-import { fmt } from "@/lib/format";
+import { fmt, fmtLy } from "@/lib/format";
 import ScoreDial from "./ScoreDial";
 import { BandBadge, ConfidencePill } from "./BandBadge";
 
@@ -29,7 +29,7 @@ export default function PlanetCard({ p, rank }: { p: IndexRow; rank?: number }) 
       <div className="grid grid-cols-3 gap-2 text-center">
         <Stat label="Radius" value={p.radius_earth != null ? `${fmt(p.radius_earth)} R⊕` : "—"} />
         <Stat label="Teq" value={p.eq_temp_k != null ? `${fmt(p.eq_temp_k, 0)} K` : "—"} />
-        <Stat label="Dist" value={p.distance_pc != null ? `${fmt(p.distance_pc, 0)} pc` : "—"} />
+        <Stat label="Dist" value={fmtLy(p.distance_pc)} />
       </div>
 
       <div className="hairline flex items-center justify-between gap-2 pt-3">

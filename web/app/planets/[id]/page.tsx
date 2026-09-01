@@ -8,7 +8,7 @@ import ContributionWaterfall from "@/components/ContributionWaterfall";
 import HZDiagram from "@/components/HZDiagram";
 import SystemView2D, { type SystemPlanet } from "@/components/SystemView2D";
 import Disclaimer from "@/components/Disclaimer";
-import { fmt } from "@/lib/format";
+import { fmt, fmtLy } from "@/lib/format";
 
 export const dynamicParams = true;
 
@@ -81,7 +81,7 @@ export default async function PlanetPage({ params }: { params: Promise<{ id: str
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Overview label="Radius" value={planet.fields.radius_earth.value} unit="R⊕" />
         <Overview label="Mass" value={planet.fields.mass_earth.value} unit="M⊕" />
-        <Overview label="Distance" value={planet.system.distance_pc} unit="pc" digits={0} />
+        <Overview label="Distance" display={fmtLy(planet.system.distance_pc)} />
         <Overview label="Discovered" value={planet.discovery.year} unit="" digits={0} isRaw />
       </div>
 
@@ -200,18 +200,24 @@ function Overview({
   unit,
   digits = 2,
   isRaw = false,
+  display,
 }: {
   label: string;
-  value: number | null;
-  unit: string;
+  value?: number | null;
+  unit?: string;
   digits?: number;
   isRaw?: boolean;
+  display?: string;
 }) {
+  const body =
+    display ?? (value == null ? "—" : isRaw ? String(value) : fmt(value, digits));
   return (
     <div className="panel px-4 py-3 text-center">
       <div className="num text-lg text-text">
-        {value == null ? "—" : isRaw ? value : fmt(value, digits)}
-        {unit && <span className="text-xs text-text-faint"> {unit}</span>}
+        {body}
+        {unit && display == null && value != null && (
+          <span className="text-xs text-text-faint"> {unit}</span>
+        )}
       </div>
       <div className="label-eyebrow mt-1">{label}</div>
     </div>

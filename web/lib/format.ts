@@ -31,6 +31,24 @@ export function fmtPct(n: number | null | undefined): string {
   return `${Math.round(n * 100)}%`;
 }
 
+/** 1 parsec = 3.26156 light-years. NASA data is stored in parsecs; the UI
+ * shows light-years. Adaptive precision so nearby stars stay distinguishable. */
+export const PC_TO_LY = 3.26156;
+
+export function toLy(pc: number | null | undefined): number | null {
+  return pc == null || Number.isNaN(pc) ? null : pc * PC_TO_LY;
+}
+
+export function fmtLy(pc: number | null | undefined, withUnit = true): string {
+  const v = toLy(pc);
+  if (v == null) return "—";
+  const s =
+    v < 100
+      ? v.toLocaleString(undefined, { maximumFractionDigits: 1 })
+      : v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return withUnit ? `${s} ly` : s;
+}
+
 export const DIMENSION_LABEL: Record<string, string> = {
   temperature_suitability: "Temperature suitability",
   habitable_zone_position: "Habitable-zone position",
